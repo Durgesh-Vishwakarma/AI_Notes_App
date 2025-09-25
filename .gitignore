@@ -73,9 +73,13 @@ jspm_packages/
 .nuxt
 dist
 
-# Gatsby files
+# Gatsby files (keep build artifacts ignored, but allow React client public dir)
 .cache/
-public
+# Was: 'public' (ignored all public folders) causing CRA client/public/index.html not committed
+# Ignore only top-level public if needed for other frameworks, but allow client/public
+/public
+!client/public/
+!client/public/index.html
 
 # Storybook build outputs
 .out
