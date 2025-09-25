@@ -83,8 +83,19 @@ export default function NotesDashboard() {
 
   if (loading) return <LoadingSpinner text="Loading notes..." />;
 
-  // Collect all tags for filter dropdown
-  const allTags = Array.from(new Set(notes.flatMap(n => n.tags)));
+  // Collect all tags for filter dropdown (avoid flatMap for broader browser support)
+  const allTags = React.useMemo(() => {
+    if (!Array.isArray(notes)) return [];
+    const collected = [];
+    for (const n of notes) {
+      if (n && Array.isArray(n.tags)) {
+        for (const t of n.tags) {
+          if (typeof t === 'string') collected.push(t);
+        }
+      }
+    }
+    return Array.from(new Set(collected)).sort();
+  }, [notes]);
 
   return (
     <div className="max-w-5xl mx-auto mt-8 w-full px-2 sm:px-4 flex flex-col sm:flex-row gap-8">
