@@ -144,14 +144,17 @@ export default function NotesDashboard() {
               <div className="font-bold text-lg mb-2">{note.title}</div>
               <div className="mb-3 text-gray-700">{note.content}</div>
               <div className="mb-3 flex flex-wrap gap-1">
-                {note.tags.map(tag => (
+                {(Array.isArray(note.tags) ? note.tags : []).filter(t => typeof t === 'string' && t.trim()).map(tag => (
                   <Badge key={tag} variant="primary">{tag}</Badge>
                 ))}
+                {!Array.isArray(note.tags) && (
+                  <span className="text-xs text-gray-400" title="Tags data missing">No tags</span>
+                )}
               </div>
               <div className="mb-3">
                 <span className="font-semibold">AI Summary:</span>
                 <ul className="list-disc ml-6 mt-1">
-                  {note.summary && note.summary.map((s, i) => <li key={i}>{s}</li>)}
+          {(Array.isArray(note.summary) ? note.summary : []).filter(s => typeof s === 'string' && s.trim()).map((s, i) => <li key={i}>{s}</li>)}
                 </ul>
               </div>
               <div className="flex gap-2">
@@ -171,14 +174,17 @@ export default function NotesDashboard() {
               <div className="font-bold text-lg mb-2">{note.title}</div>
               <div className="mb-3 text-gray-700">{note.content}</div>
               <div className="mb-3 flex flex-wrap gap-1">
-                {note.tags.map(tag => (
+                {(Array.isArray(note.tags) ? note.tags : []).filter(t => typeof t === 'string' && t.trim()).map(tag => (
                   <Badge key={tag} variant="primary">{tag}</Badge>
                 ))}
+                {!Array.isArray(note.tags) && (
+                  <span className="text-xs text-gray-400" title="Tags data missing">No tags</span>
+                )}
               </div>
               <div className="mb-3">
                 <span className="font-semibold">AI Summary:</span>
                 <ul className="list-disc ml-6 mt-1">
-                  {note.summary && note.summary.map((s, i) => <li key={i}>{s}</li>)}
+          {(Array.isArray(note.summary) ? note.summary : []).filter(s => typeof s === 'string' && s.trim()).map((s, i) => <li key={i}>{s}</li>)}
                 </ul>
               </div>
               <div className="flex gap-2">
