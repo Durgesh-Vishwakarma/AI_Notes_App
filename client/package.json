@@ -17,7 +17,8 @@
     "test:coverage": "react-scripts test --coverage --watchAll=false",
     "eject": "react-scripts eject",
     "lint": "eslint src --ext .js,.jsx",
-    "lint:fix": "eslint src --ext .js,.jsx --fix"
+    "lint:fix": "eslint src --ext .js,.jsx --fix",
+    "vercel-build": "react-scripts build"
   },
   "proxy": "http://localhost:5000",
   "browserslist": {

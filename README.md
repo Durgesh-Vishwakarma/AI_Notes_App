@@ -139,18 +139,90 @@ ai-notes-app/
 
 ## 🚀 Deployment
 
-### Production Deployment
-```bash
-# Build frontend
-cd client
-npm run build
+This project is configured for deployment with **frontend on Vercel** and **backend on Render**.
 
-# Start production server
-cd ../server
-npm start
+### Backend Deployment on Render
+
+1. **Create a Render account** at [render.com](https://render.com)
+
+2. **Create a new Web Service**:
+   - Connect your GitHub repository
+   - Select the `server` folder as the root directory
+   - Use the following settings:
+     - **Build Command**: `npm install`
+     - **Start Command**: `npm start`
+     - **Node Version**: 18.x or higher
+
+3. **Set Environment Variables** in Render dashboard:
+   ```env
+   MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/ai-notes-app
+   JWT_SECRET=your-super-secret-jwt-key-at-least-32-characters-long
+   HF_API_KEY=your-hugging-face-api-key
+   NODE_ENV=production
+   ```
+
+4. **Deploy**: Render will automatically build and deploy your backend
+
+### Frontend Deployment on Vercel
+
+1. **Create a Vercel account** at [vercel.com](https://vercel.com)
+
+2. **Deploy from GitHub**:
+   - Import your repository
+   - Set **Root Directory** to `client`
+   - **Framework Preset**: Create React App
+   - **Build Command**: `npm run build` (or leave default)
+   - **Output Directory**: `build` (or leave default)
+
+3. **Set Environment Variables** in Vercel dashboard:
+   ```env
+   REACT_APP_API_URL=https://your-backend-app-name.onrender.com/api
+   ```
+   Replace `your-backend-app-name` with your actual Render service name.
+
+4. **Deploy**: Vercel will automatically build and deploy your frontend
+
+### Manual Deployment Steps
+
+#### Backend (Render)
+```bash
+# Make sure your server package.json has the correct start script
+cd server
+npm install
+npm start  # This should work locally first
 ```
 
-### Docker Deployment
+#### Frontend (Vercel)
+```bash
+# Test build locally
+cd client
+npm install
+npm run build  # Should create a 'build' folder
+```
+
+### Environment Setup Checklist
+
+- [ ] MongoDB Atlas database created and connection string ready
+- [ ] JWT secret generated (minimum 32 characters)
+- [ ] Hugging Face API key obtained (optional, for AI features)
+- [ ] Backend deployed on Render with correct environment variables
+- [ ] Frontend deployed on Vercel with correct API URL
+- [ ] Test the deployed application end-to-end
+
+### Deployment Troubleshooting
+
+**Common Issues:**
+
+1. **CORS Errors**: Make sure your backend allows requests from your Vercel domain
+2. **Environment Variables**: Double-check all environment variables are set correctly
+3. **API URL**: Ensure `REACT_APP_API_URL` points to your Render backend URL
+4. **Build Failures**: Check that all dependencies are in `package.json`, not just `devDependencies`
+
+**Backend Health Check**: Visit `https://your-backend-app-name.onrender.com/` to see "AI Notes App Backend"
+
+**Frontend Check**: Your Vercel URL should load the React application
+
+### Docker Deployment (Alternative)
 ```bash
 # Build and run with Docker
 docker-compose up --build
