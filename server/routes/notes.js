@@ -1,10 +1,9 @@
-dotenv.config();
-
 import express from 'express';
 import Note from '../models/Note.js';
 import auth from '../middleware/auth.js';
 import axios from 'axios';
 import dotenv from 'dotenv';
+
 dotenv.config();
 
 

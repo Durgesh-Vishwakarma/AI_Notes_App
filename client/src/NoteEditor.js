@@ -17,13 +17,21 @@ export default function NoteEditor({ note, onSave, onCancel }) {
   const [saving, setSaving] = useState(false);
 
   const handleSummarize = async () => {
+    if (!content.trim()) {
+      alert('Please add some content before summarizing.');
+      return;
+    }
+    
     setSummarizing(true);
     try {
       const res = await axios.post('/notes/summarize', { content });
       setSummary(res.data.summary || []);
       alert('Summarization successful!');
     } catch (err) {
-      alert('Summarization failed: ' + (err?.response?.data?.message || err?.message || 'Unknown error'));
+      console.error('Summarization error:', err);
+      const errorMessage = err?.response?.data?.message || err?.message || 'Unknown error';
+      const statusCode = err?.response?.status || 'Unknown';
+      alert(`Summarization failed (${statusCode}): ${errorMessage}`);
     }
     setSummarizing(false);
   };
