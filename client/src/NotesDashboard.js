@@ -81,8 +81,8 @@ export default function NotesDashboard() {
     }
   };
 
-  if (loading) return <LoadingSpinner text="Loading notes..." />;
-
+  // IMPORTANT: Hooks must not be called conditionally. Compute memoized values
+  // before any early returns to keep hook order consistent across renders.
   // Collect all tags for filter dropdown (avoid flatMap for broader browser support)
   const allTags = React.useMemo(() => {
     try {
@@ -121,6 +121,8 @@ export default function NotesDashboard() {
     // eslint-disable-next-line no-console
     console.debug('NotesDashboard debug:', { count: safeNotes.length, allTags });
   }
+
+  if (loading) return <LoadingSpinner text="Loading notes..." />;
 
   return (
     <div className="max-w-5xl mx-auto mt-8 w-full px-2 sm:px-4 flex flex-col sm:flex-row gap-8">
