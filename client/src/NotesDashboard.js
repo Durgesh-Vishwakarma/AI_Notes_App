@@ -85,17 +85,42 @@ export default function NotesDashboard() {
 
   // Collect all tags for filter dropdown (avoid flatMap for broader browser support)
   const allTags = React.useMemo(() => {
-    if (!Array.isArray(notes)) return [];
-    const collected = [];
-    for (const n of notes) {
-      if (n && Array.isArray(n.tags)) {
-        for (const t of n.tags) {
-          if (typeof t === 'string') collected.push(t);
+    try {
+      if (!Array.isArray(notes)) return [];
+      const collected = [];
+      for (const n of notes) {
+        if (n && Array.isArray(n.tags)) {
+          for (const t of n.tags) {
+            if (typeof t === 'string') collected.push(t);
+          }
         }
       }
+      const unique = Array.from(new Set(collected)).sort();
+      return unique;
+    } catch (e) {
+      // Debug fallback
+      if (process.env.NODE_ENV === 'development') {
+        // eslint-disable-next-line no-console
+        console.error('allTags compute error', e, notes);
+      }
+      return [];
     }
-    return Array.from(new Set(collected)).sort();
   }, [notes]);
+
+  // Normalize notes to avoid undefined property access
+  const safeNotes = Array.isArray(notes)
+    ? notes.map(n => ({
+        ...n,
+        tags: Array.isArray(n?.tags) ? n.tags : [],
+        summary: Array.isArray(n?.summary) ? n.summary : []
+      }))
+    : [];
+
+  if (process.env.NODE_ENV === 'development') {
+    // Minimal once-per-render logging to debug error 310 origin (remove after fix)
+    // eslint-disable-next-line no-console
+    console.debug('NotesDashboard debug:', { count: safeNotes.length, allTags });
+  }
 
   return (
     <div className="max-w-5xl mx-auto mt-8 w-full px-2 sm:px-4 flex flex-col sm:flex-row gap-8">
@@ -136,10 +161,10 @@ export default function NotesDashboard() {
         )}
         {error && <div className="text-red-500 mb-2">{error}</div>}
         <h2 className="text-xl font-bold mb-2">All Notes</h2>
-        {notes.length === 0 ? (
+        {safeNotes.length === 0 ? (
           <div>No notes yet.</div>
         ) : (
-          notes.map(note => (
+          safeNotes.map(note => (
             <Card key={note._id} className="p-4 mb-4">
               <div className="font-bold text-lg mb-2">{note.title}</div>
               <div className="mb-3 text-gray-700">{note.content}</div>
@@ -166,10 +191,10 @@ export default function NotesDashboard() {
         )}
       </div>
       {/* Right column: Search results */}
-      {searchResults.length > 0 && (
+      {searchResults.length > 0 && Array.isArray(searchResults) && (
         <div className="flex-1 border-l border-gray-300 pl-8">
           <h2 className="text-xl font-bold mb-2">Search Results</h2>
-          {searchResults.map(note => (
+          {searchResults.filter(Boolean).map(note => (
             <Card key={note._id} className="p-4 mb-4 border-blue-200 bg-blue-50">
               <div className="font-bold text-lg mb-2">{note.title}</div>
               <div className="mb-3 text-gray-700">{note.content}</div>
