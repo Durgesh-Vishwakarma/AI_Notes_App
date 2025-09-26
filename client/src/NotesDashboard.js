@@ -5,6 +5,10 @@ import NoteEditor from './NoteEditor';
 import ExportModal from './components/ExportModal';
 import { Button, Card, Badge, LoadingSpinner, Toast } from './components/UI';
 
+// Set axios base URL for production
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+axios.defaults.baseURL = API_URL;
+
 export default function NotesDashboard() {
   const { token } = useContext(AuthContext);
   const [notes, setNotes] = useState([]);
@@ -23,7 +27,7 @@ export default function NotesDashboard() {
   const fetchNotes = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('/api/notes');
+      const res = await axios.get('/notes');
       setNotes(res.data);
       setError('');
     } catch (err) {
@@ -41,7 +45,7 @@ export default function NotesDashboard() {
       const params = {};
       if (search) params.q = search;
       if (tag) params.tag = tag;
-      const res = await axios.get('/api/notes/search', { params });
+      const res = await axios.get('/notes/search', { params });
       setSearchResults(res.data);
       setError('');
       if (res.data.length === 0) {
@@ -56,7 +60,7 @@ export default function NotesDashboard() {
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this note?')) return;
     try {
-      await axios.delete(`/api/notes/${id}`);
+      await axios.delete(`/notes/${id}`);
       setNotes(notes.filter(n => n._id !== id));
     } catch {
       setError('Delete failed');
@@ -69,10 +73,10 @@ export default function NotesDashboard() {
   const handleSave = async (note) => {
     try {
       if (note._id) {
-        const res = await axios.put(`/api/notes/${note._id}`, note);
+        const res = await axios.put(`/notes/${note._id}`, note);
         setNotes(notes.map(n => n._id === note._id ? res.data : n));
       } else {
-        const res = await axios.post('/api/notes', note);
+        const res = await axios.post('/notes', note);
         setNotes([res.data, ...notes]);
       }
       setEditingNote(null);
@@ -133,9 +137,9 @@ export default function NotesDashboard() {
           <Button 
             variant="secondary" 
             onClick={() => setShowExportModal(true)}
-            disabled={notes.length === 0}
+            disabled={safeNotes.length === 0}
           >
-            Export Notes ({notes.length})
+            Export Notes ({safeNotes.length})
           </Button>
         </div>
         <form className="mb-4 flex flex-col sm:flex-row gap-2" onSubmit={handleSearch}>
@@ -232,7 +236,7 @@ export default function NotesDashboard() {
       )}
       
       <ExportModal 
-        notes={notes}
+        notes={safeNotes}
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
       />
