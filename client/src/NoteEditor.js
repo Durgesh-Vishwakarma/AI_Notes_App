@@ -2,6 +2,12 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { Button, Input, Card } from './components/UI';
 
+// Ensure axios base URL is set (in case NoteEditor is used independently)
+if (!axios.defaults.baseURL) {
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+  axios.defaults.baseURL = API_URL;
+}
+
 export default function NoteEditor({ note, onSave, onCancel }) {
   const [title, setTitle] = useState(note.title || '');
   const [content, setContent] = useState(note.content || '');
@@ -13,7 +19,7 @@ export default function NoteEditor({ note, onSave, onCancel }) {
   const handleSummarize = async () => {
     setSummarizing(true);
     try {
-      const res = await axios.post('/api/notes/summarize', { content });
+      const res = await axios.post('/notes/summarize', { content });
       setSummary(res.data.summary || []);
       alert('Summarization successful!');
     } catch (err) {

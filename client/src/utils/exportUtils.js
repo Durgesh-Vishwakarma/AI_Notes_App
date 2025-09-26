@@ -30,7 +30,7 @@ export const exportToPDF = (notes, filename = 'notes-export.pdf') => {
     doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
     doc.text(`Created: ${new Date(note.createdAt).toLocaleDateString()}`, 20, yPosition);
-    doc.text(`Tags: ${note.tags.join(', ')}`, 120, yPosition);
+    doc.text(`Tags: ${Array.isArray(note.tags) ? note.tags.join(', ') : ''}`, 120, yPosition);
     yPosition += 10;
     
     // Note content
@@ -67,7 +67,7 @@ export const exportToMarkdown = (notes) => {
   notes.forEach(note => {
     markdown += `## ${note.title}\\n\\n`;
     markdown += `**Created:** ${new Date(note.createdAt).toLocaleDateString()}\\n`;
-    markdown += `**Tags:** ${note.tags.join(', ')}\\n\\n`;
+    markdown += `**Tags:** ${Array.isArray(note.tags) ? note.tags.join(', ') : ''}\\n\\n`;
     markdown += `${note.content}\\n\\n`;
     
     if (note.summary && note.summary.length > 0) {
