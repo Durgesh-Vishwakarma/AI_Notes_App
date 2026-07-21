@@ -153,6 +153,8 @@ This project is configured for deployment with **frontend on Vercel** and **back
      - **Start Command**: `npm start`
      - **Node Version**: 18.x or higher
 
+   If you deploy with Render Blueprint instead of the dashboard, use the repo-root `render.yaml` so the build command stays `npm install --omit=dev --no-audit --no-fund` and the service root stays `server`.
+
 3. **Set Environment Variables** in Render dashboard:
    ```env
    MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/ai-notes-app

@@ -3,6 +3,7 @@ services:
     name: ai-notes-app-backend
     env: node
     plan: free
+    rootDir: server
     buildCommand: npm install --omit=dev --no-audit --no-fund
     startCommand: npm start
     healthCheckPath: /
