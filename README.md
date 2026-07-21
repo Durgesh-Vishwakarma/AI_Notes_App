@@ -178,9 +178,9 @@ This project is configured for deployment with **frontend on Vercel** and **back
 
 3. **Set Environment Variables** in Vercel dashboard:
    ```env
-   REACT_APP_API_URL=https://your-backend-app-name.onrender.com/api
+   REACT_APP_API_URL=https://ai-notes-app-9kx4.onrender.com/api
    ```
-   Replace `your-backend-app-name` with your actual Render service name.
+   Replace this value only if you redeploy Render under a different URL.
 
 4. **Deploy**: Vercel will automatically build and deploy your frontend
 
