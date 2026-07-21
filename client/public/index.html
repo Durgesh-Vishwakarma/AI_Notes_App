@@ -2,64 +2,53 @@
 <html lang="en" dir="ltr">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
-    
-    <!-- Primary Meta Tags -->
-    <title>AI Notes — Smart Note-Taking with AI-Powered Summaries</title>
-    <meta name="title" content="AI Notes — Smart Note-Taking with AI-Powered Summaries" />
-    <meta name="description" content="Transform your thoughts into organized brilliance. AI Notes uses artificial intelligence to automatically summarize, tag, and organize your notes. Create, search, and export with ease." />
-    <meta name="keywords" content="AI notes, smart notes, note-taking app, AI summaries, organize notes, productivity tool, intelligent notes, machine learning notes" />
-    <meta name="author" content="AI Notes App" />
-    <meta name="robots" content="index, follow" />
-    <meta name="theme-color" content="#0f0a1e" />
-    
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="AI Notes — Smart Note-Taking with AI-Powered Summaries" />
-    <meta property="og:description" content="Transform your thoughts into organized brilliance. AI-powered note-taking that automatically summarizes, tags, and organizes your ideas." />
-    <meta property="og:site_name" content="AI Notes" />
-    
-    <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="AI Notes — Smart Note-Taking with AI-Powered Summaries" />
-    <meta name="twitter:description" content="Transform your thoughts into organized brilliance. AI-powered note-taking that automatically summarizes, tags, and organizes your ideas." />
-    
-    <!-- Performance Hints -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!--
+      Per-route <title>, description, canonical, Open Graph and Twitter tags
+      are injected at runtime by src/components/Seo.js.
+      What stays here is the fallback shown before React mounts, plus the
+      static assets and hints that never vary by route.
+    -->
+    <title>AI Notes — Write notes, get instant summaries</title>
+    <meta
+      name="description"
+      content="A free note-taking app that summarises your notes into bullet points, filters them by tag, searches full text, and exports to PDF, Markdown or JSON."
+    />
+
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="color-scheme" content="light dark" />
+
+    <link rel="icon" href="%PUBLIC_URL%/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/icon.svg" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+
+    <!-- Fonts: preconnect early, then load without blocking first paint -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    
-    <!-- Google Fonts: Inter + JetBrains Mono -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-    
-    <!-- JSON-LD Structured Data -->
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "AI Notes",
-        "description": "Smart note-taking application with AI-powered summaries, intelligent search, and multi-format export.",
-        "applicationCategory": "ProductivityApplication",
-        "operatingSystem": "Web",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "USD"
-        },
-        "featureList": [
-          "AI-Powered Note Summarization",
-          "Smart Search & Tag Filtering",
-          "Export to PDF, Markdown, JSON",
-          "Secure User Authentication"
-        ]
-      }
-    </script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <noscript>
-      <div style="padding: 2rem; text-align: center; font-family: system-ui, sans-serif;">
-        <h1>AI Notes</h1>
-        <p>AI Notes is a smart note-taking application that uses artificial intelligence to summarize and organize your notes. Please enable JavaScript to use this application.</p>
+      <div
+        style="
+          max-width: 640px;
+          margin: 0 auto;
+          padding: 48px 24px;
+          font-family: system-ui, sans-serif;
+          line-height: 1.6;
+        "
+      >
+        <h1 style="font-size: 1.75rem; margin-bottom: 16px">AI Notes</h1>
+        <p style="margin-bottom: 12px">
+          AI Notes is a free note-taking app that turns long notes into short
+          bullet-point summaries. It also supports tag filtering, full-text search
+          across your notes, and export to PDF, Markdown or JSON.
+        </p>
+        <p>JavaScript is required to use the app. Please enable it and reload this page.</p>
       </div>
     </noscript>
     <div id="root"></div>

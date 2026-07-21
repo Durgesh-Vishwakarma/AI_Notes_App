@@ -1,436 +1,387 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
-import { AuthContext } from './AuthContext';
 import NoteEditor from './NoteEditor';
 import ExportModal from './components/ExportModal';
-import { Button, Card, Badge, LoadingSpinner, Toast, EmptyState, ConfirmDialog } from './components/UI';
+import {
+  Button,
+  Badge,
+  Alert,
+  Toast,
+  EmptyState,
+  ConfirmDialog,
+  SkeletonList,
+  Icon,
+} from './components/UI';
 
-// Set axios base URL for production
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 axios.defaults.baseURL = API_URL;
 
+/* -------------------------------------------------------------------------
+   NOTE CARD
+   ------------------------------------------------------------------------- */
+
+const NoteCard = ({ note, onEdit, onDelete }) => {
+  const tags = note.tags.filter((t) => typeof t === 'string' && t.trim());
+  const summary = note.summary.filter((s) => typeof s === 'string' && s.trim());
+
+  const preview =
+    note.content && note.content.length > 240
+      ? `${note.content.slice(0, 240).trimEnd()}…`
+      : note.content;
+
+  return (
+    <article className="card card-interactive" style={{ padding: 20 }}>
+      <h3 style={{ marginBottom: 6 }}>{note.title || 'Untitled note'}</h3>
+
+      {preview && (
+        <p
+          style={{
+            fontSize: '0.9375rem',
+            color: 'var(--text-secondary)',
+            marginBottom: 14,
+            whiteSpace: 'pre-wrap',
+          }}
+        >
+          {preview}
+        </p>
+      )}
+
+      {summary.length > 0 && (
+        <div className="panel" style={{ padding: 14, marginBottom: 14 }}>
+          <p
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: 'var(--accent)',
+              marginBottom: 8,
+            }}
+          >
+            <Icon.Sparkle width={13} height={13} />
+            Summary
+          </p>
+          <ul style={{ listStyle: 'none', display: 'grid', gap: 6 }}>
+            {summary.map((line, i) => (
+              <li
+                key={i}
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  fontSize: '0.8125rem',
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                <span aria-hidden="true" style={{ color: 'var(--text-muted)' }}>
+                  —
+                </span>
+                {line}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {tags.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+          {tags.map((tag) => (
+            <Badge key={tag}>{tag}</Badge>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Button variant="secondary" size="sm" icon={<Icon.Pencil />} onClick={() => onEdit(note)}>
+          Edit
+        </Button>
+        <Button variant="danger" size="sm" icon={<Icon.Trash />} onClick={() => onDelete(note)}>
+          Delete
+        </Button>
+      </div>
+    </article>
+  );
+};
+
+/* -------------------------------------------------------------------------
+   DASHBOARD
+   ------------------------------------------------------------------------- */
+
 export default function NotesDashboard() {
-  const { token } = useContext(AuthContext);
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editingNote, setEditingNote] = useState(null);
   const [error, setError] = useState('');
+  const [editingNote, setEditingNote] = useState(null);
   const [search, setSearch] = useState('');
-  const [tag, setTag] = useState('');
-  const [showExportModal, setShowExportModal] = useState(false);
+  const [activeTag, setActiveTag] = useState('');
+  const [showExport, setShowExport] = useState(false);
   const [toast, setToast] = useState(null);
-  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
 
-  useEffect(() => {
-    fetchNotes();
-  }, []);
-
-  const fetchNotes = async () => {
+  const fetchNotes = useCallback(async () => {
     setLoading(true);
     try {
       const res = await axios.get('/notes');
-      setNotes(res.data);
+      setNotes(Array.isArray(res.data) ? res.data : []);
       setError('');
     } catch (err) {
-      setError('Failed to load notes');
+      setError(
+        !err.response
+          ? 'Could not reach the server. It may be starting up — try again shortly.'
+          : 'Could not load your notes. Please refresh to try again.'
+      );
     }
     setLoading(false);
-  };
+  }, []);
 
-  const [searchResults, setSearchResults] = useState([]);
+  useEffect(() => {
+    fetchNotes();
+  }, [fetchNotes]);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const params = {};
-      if (search) params.q = search;
-      if (tag) params.tag = tag;
-      const res = await axios.get('/notes/search', { params });
-      setSearchResults(res.data);
-      setError('');
-      if (res.data.length === 0) {
-        setToast({ message: 'No matching notes found.', type: 'info' });
-      }
-    } catch {
-      setError('Search failed');
-    }
-    setLoading(false);
-  };
+  // Normalise once, so nothing downstream has to defend against a missing
+  // tags/summary array on a note that predates those fields.
+  const safeNotes = useMemo(
+    () =>
+      (Array.isArray(notes) ? notes : []).filter(Boolean).map((n) => ({
+        ...n,
+        tags: Array.isArray(n.tags) ? n.tags : [],
+        summary: Array.isArray(n.summary) ? n.summary : [],
+      })),
+    [notes]
+  );
 
-  const handleDelete = async (id) => {
-    try {
-      await axios.delete(`/notes/${id}`);
-      setNotes(notes.filter((n) => n._id !== id));
-      setSearchResults(searchResults.filter((n) => n._id !== id));
-      setToast({ message: 'Note deleted successfully', type: 'success' });
-    } catch {
-      setError('Delete failed');
-    }
-    setConfirmDelete(null);
-  };
+  const allTags = useMemo(() => {
+    const seen = new Set();
+    safeNotes.forEach((n) =>
+      n.tags.forEach((t) => {
+        if (typeof t === 'string' && t.trim()) seen.add(t);
+      })
+    );
+    return Array.from(seen).sort();
+  }, [safeNotes]);
 
-  const handleEdit = (note) => setEditingNote(note);
-  const handleNew = () => setEditingNote({ title: '', content: '', tags: [] });
+  // Filtering is client-side and instant. The previous version required
+  // submitting a form to /notes/search and rendered hits in a second column,
+  // so the same note could appear twice on screen at once.
+  const visibleNotes = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return safeNotes.filter((n) => {
+      if (activeTag && !n.tags.includes(activeTag)) return false;
+      if (!q) return true;
+      return (
+        (n.title || '').toLowerCase().includes(q) || (n.content || '').toLowerCase().includes(q)
+      );
+    });
+  }, [safeNotes, search, activeTag]);
 
   const handleSave = async (note) => {
     try {
       if (note._id) {
         const res = await axios.put(`/notes/${note._id}`, note);
-        setNotes(notes.map((n) => (n._id === note._id ? res.data : n)));
-        setToast({ message: 'Note updated successfully', type: 'success' });
+        setNotes((prev) => prev.map((n) => (n._id === note._id ? res.data : n)));
+        setToast({ message: 'Note updated', type: 'success' });
       } else {
         const res = await axios.post('/notes', note);
-        setNotes([res.data, ...notes]);
-        setToast({ message: 'Note created successfully', type: 'success' });
+        setNotes((prev) => [res.data, ...prev]);
+        setToast({ message: 'Note created', type: 'success' });
       }
       setEditingNote(null);
+      setError('');
     } catch {
-      setError('Save failed');
+      setToast({ message: 'Could not save the note. Please try again.', type: 'error' });
     }
   };
 
-  // IMPORTANT: Hooks must not be called conditionally. Compute memoized values
-  // before any early returns to keep hook order consistent across renders.
-  // Collect all tags for filter dropdown (avoid flatMap for broader browser support)
-  const allTags = React.useMemo(() => {
+  const handleDelete = async (id) => {
+    setPendingDelete(null);
     try {
-      if (!Array.isArray(notes)) return [];
-      const collected = [];
-      for (const n of notes) {
-        if (n && Array.isArray(n.tags)) {
-          for (const t of n.tags) {
-            if (typeof t === 'string') collected.push(t);
-          }
-        }
-      }
-      const unique = Array.from(new Set(collected)).sort();
-      return unique;
-    } catch (e) {
-      // Debug fallback
-      if (process.env.NODE_ENV === 'development') {
-        // eslint-disable-next-line no-console
-        console.error('allTags compute error', e, notes);
-      }
-      return [];
+      await axios.delete(`/notes/${id}`);
+      setNotes((prev) => prev.filter((n) => n._id !== id));
+      setToast({ message: 'Note deleted', type: 'success' });
+    } catch {
+      setToast({ message: 'Could not delete the note. Please try again.', type: 'error' });
     }
-  }, [notes]);
-
-  // Normalize notes to avoid undefined property access
-  const safeNotes = Array.isArray(notes)
-    ? notes.map((n) => ({
-        ...n,
-        tags: Array.isArray(n?.tags) ? n.tags : [],
-        summary: Array.isArray(n?.summary) ? n.summary : [],
-      }))
-    : [];
-
-  if (process.env.NODE_ENV === 'development') {
-    // Minimal once-per-render logging to debug error 310 origin (remove after fix)
-    // eslint-disable-next-line no-console
-    console.debug('NotesDashboard debug:', { count: safeNotes.length, allTags });
-  }
-
-  if (loading) return <LoadingSpinner text="Loading your notes..." />;
-
-  const clearSearch = () => {
-    setSearchResults([]);
-    setSearch('');
-    setTag('');
   };
 
-  // Render a single note card (reused for both main list and search results)
-  const renderNoteCard = (note, isSearchResult = false) => (
-    <div
-      key={note._id}
-      className={`glass-card note-card p-5 animate-fade-in`}
-      style={{
-        borderColor: isSearchResult ? 'rgba(99, 102, 241, 0.3)' : undefined,
-      }}
-    >
-      {/* Title */}
-      <h3
-        className="font-bold text-lg mb-2"
-        style={{ color: 'var(--text-primary)' }}
-      >
-        {note.title}
-      </h3>
+  const isFiltering = Boolean(search.trim() || activeTag);
 
-      {/* Content preview */}
-      <p
-        className="mb-3 text-sm leading-relaxed"
-        style={{ color: 'var(--text-secondary)' }}
-      >
-        {note.content && note.content.length > 200
-          ? note.content.substring(0, 200) + '...'
-          : note.content}
-      </p>
+  const clearFilters = () => {
+    setSearch('');
+    setActiveTag('');
+  };
 
-      {/* Tags */}
-      <div className="mb-3 flex flex-wrap gap-1.5">
-        {(Array.isArray(note.tags) ? note.tags : [])
-          .filter((t) => typeof t === 'string' && t.trim())
-          .map((tag) => (
-            <Badge key={tag} variant="primary">
-              {tag}
-            </Badge>
-          ))}
-        {!Array.isArray(note.tags) && (
-          <span
-            className="text-xs"
-            style={{ color: 'var(--text-muted)' }}
-            title="Tags data missing"
-          >
-            No tags
-          </span>
-        )}
-      </div>
-
-      {/* AI Summary */}
-      {Array.isArray(note.summary) && note.summary.filter(s => typeof s === 'string' && s.trim()).length > 0 && (
-        <div
-          className="mb-4 p-3 rounded-xl"
-          style={{
-            background: 'rgba(99, 102, 241, 0.08)',
-            border: '1px solid rgba(99, 102, 241, 0.15)',
-          }}
-        >
-          <div
-            className="text-xs font-semibold mb-2 flex items-center gap-1.5"
-            style={{ color: '#a5b4fc' }}
-          >
-            <span>✨</span> AI Insights
-          </div>
-          <ul className="space-y-1">
-            {note.summary
-              .filter((s) => typeof s === 'string' && s.trim())
-              .map((s, i) => (
-                <li
-                  key={i}
-                  className="text-xs flex items-start gap-2"
-                  style={{ color: 'var(--text-secondary)' }}
-                >
-                  <span style={{ color: 'var(--accent-purple)' }}>•</span>
-                  {s}
-                </li>
-              ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Actions */}
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={() => handleEdit(note)}>
-          ✏️ Edit
-        </Button>
-        <Button
-          variant="danger"
-          size="sm"
-          onClick={() =>
-            setConfirmDelete({
-              id: note._id,
-              title: note.title,
-            })
-          }
-        >
-          🗑️ Delete
-        </Button>
-      </div>
-    </div>
-  );
+  const startNewNote = () => setEditingNote({ title: '', content: '', tags: [] });
 
   return (
-    <div className="max-w-5xl mx-auto mt-4 w-full px-2 sm:px-4 flex flex-col sm:flex-row gap-8">
-      {/* Left column: All notes */}
-      <div className="flex-1">
-        {/* Action Bar */}
-        <div className="mb-5 flex gap-3">
-          <Button variant="success" onClick={handleNew} icon="✏️">
-            New Note
-          </Button>
+    <div className="container">
+      {/* ------------------------------------------------------------ HEADER */}
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'flex-end',
+          justifyContent: 'space-between',
+          gap: 16,
+          marginBottom: 24,
+        }}
+      >
+        <div>
+          <h1 style={{ fontSize: '1.75rem', marginBottom: 4 }}>Your notes</h1>
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+            {loading ? 'Loading…' : `${safeNotes.length} note${safeNotes.length === 1 ? '' : 's'}`}
+            {isFiltering && !loading && ` · ${visibleNotes.length} shown`}
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8 }}>
           <Button
             variant="secondary"
-            onClick={() => setShowExportModal(true)}
+            icon={<Icon.Download />}
+            onClick={() => setShowExport(true)}
             disabled={safeNotes.length === 0}
-            icon="📤"
           >
-            Export ({safeNotes.length})
+            Export
+          </Button>
+          <Button variant="primary" icon={<Icon.Plus />} onClick={startNewNote}>
+            New note
           </Button>
         </div>
-
-        {/* Search Bar */}
-        <form
-          className="mb-6 flex flex-col sm:flex-row gap-3"
-          onSubmit={handleSearch}
-        >
-          <div className="relative flex-1">
-            <div
-              className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
-              </svg>
-            </div>
-            <input
-              type="text"
-              placeholder="Search your notes..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="input-glass pl-11"
-            />
-          </div>
-
-          {/* Tag Filter as Pills */}
-          <div className="flex gap-2 items-center flex-wrap">
-            <button
-              type="button"
-              onClick={() => setTag('')}
-              className={`badge transition-all duration-200 cursor-pointer ${tag === '' ? 'badge-primary' : 'badge-default'}`}
-              style={{ padding: '6px 14px' }}
-            >
-              All
-            </button>
-            {allTags.map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTag(t)}
-                className={`badge transition-all duration-200 cursor-pointer ${tag === t ? 'badge-primary' : 'badge-default'}`}
-                style={{ padding: '6px 14px' }}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-
-          <Button type="submit" variant="primary" size="md">
-            Search
-          </Button>
-        </form>
-
-        {/* Note Editor */}
-        {editingNote && (
-          <div className="mb-6 animate-scale-in">
-            <NoteEditor
-              note={editingNote}
-              onSave={handleSave}
-              onCancel={() => setEditingNote(null)}
-            />
-          </div>
-        )}
-
-        {/* Error */}
-        {error && (
-          <div
-            className="mb-4 p-3 rounded-xl text-sm"
-            style={{
-              background: 'rgba(244, 63, 94, 0.1)',
-              border: '1px solid rgba(244, 63, 94, 0.25)',
-              color: '#fb7185',
-            }}
-          >
-            ⚠ {error}
-          </div>
-        )}
-
-        {/* Notes Heading */}
-        <div className="flex items-center justify-between mb-4">
-          <h2
-            className="text-xl font-bold gradient-text"
-          >
-            All Notes
-          </h2>
-          <span
-            className="text-sm"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            {safeNotes.length} note{safeNotes.length !== 1 ? 's' : ''}
-          </span>
-        </div>
-
-        {/* Notes Grid */}
-        {safeNotes.length === 0 ? (
-          <EmptyState
-            icon="📝"
-            title="Your workspace is empty"
-            description="Create your first note and let AI do the heavy lifting. Get instant summaries, smart tags, and powerful search — all in one place."
-            action={
-              <Button variant="primary" size="lg" onClick={handleNew} icon="✨">
-                Create Your First Note
-              </Button>
-            }
-          />
-        ) : (
-          <div className="grid gap-4">
-            {safeNotes.map((note) => renderNoteCard(note))}
-          </div>
-        )}
       </div>
 
-      {/* Right column: Search results */}
-      {searchResults.length > 0 && Array.isArray(searchResults) && (
-        <div
-          className="flex-1 animate-slide-up"
-          style={{
-            borderLeft: '1px solid rgba(168, 85, 247, 0.15)',
-            paddingLeft: '2rem',
-          }}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold gradient-text-secondary">
-              Search Results
-            </h2>
-            <Button variant="outline" size="sm" onClick={clearSearch}>
-              ✕ Clear
-            </Button>
-          </div>
-          <div className="grid gap-4">
-            {searchResults
-              .filter(Boolean)
-              .map((note) => renderNoteCard(note, true))}
-          </div>
+      {/* ------------------------------------------------------------ EDITOR */}
+      {editingNote && (
+        <div style={{ marginBottom: 24 }} className="animate-slide-in">
+          <NoteEditor
+            key={editingNote._id || 'new'}
+            note={editingNote}
+            onSave={handleSave}
+            onCancel={() => setEditingNote(null)}
+          />
         </div>
       )}
 
-      {/* Toast */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
+      {/* ----------------------------------------------------------- FILTERS */}
+      {(safeNotes.length > 0 || isFiltering) && (
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ position: 'relative', marginBottom: allTags.length ? 12 : 0 }}>
+            <span className="field-icon">
+              <Icon.Search />
+            </span>
+            <label htmlFor="note-search" className="sr-only">
+              Search notes
+            </label>
+            <input
+              id="note-search"
+              type="search"
+              className="input input-with-icon"
+              placeholder="Search titles and content…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          {allTags.length > 0 && (
+            <div
+              style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}
+              role="group"
+              aria-label="Filter by tag"
+            >
+              <button
+                type="button"
+                className="badge tag-filter"
+                aria-pressed={activeTag === ''}
+                onClick={() => setActiveTag('')}
+              >
+                All
+              </button>
+              {allTags.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  className="badge tag-filter"
+                  aria-pressed={activeTag === tag}
+                  onClick={() => setActiveTag(activeTag === tag ? '' : tag)}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Confirm Delete Dialog */}
-      {confirmDelete && (
+      {/* ------------------------------------------------------------- ERROR */}
+      {error && (
+        <div style={{ marginBottom: 20 }}>
+          <Alert type="error">{error}</Alert>
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------- LIST */}
+      {loading ? (
+        <SkeletonList count={3} />
+      ) : safeNotes.length === 0 ? (
+        <EmptyState
+          title="No notes yet"
+          description="Write your first note, then generate a summary of it. Meeting notes and reading notes are a good place to start."
+          action={
+            <Button variant="primary" size="lg" icon={<Icon.Plus />} onClick={startNewNote}>
+              Write your first note
+            </Button>
+          }
+        />
+      ) : visibleNotes.length === 0 ? (
+        <EmptyState
+          title="No notes match those filters"
+          description={
+            activeTag && search.trim()
+              ? `Nothing tagged “${activeTag}” contains “${search.trim()}”.`
+              : activeTag
+                ? `You have no notes tagged “${activeTag}”.`
+                : `Nothing contains “${search.trim()}”.`
+          }
+          action={
+            <Button variant="secondary" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          }
+        />
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gap: 16,
+            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+          }}
+        >
+          {visibleNotes.map((note) => (
+            <NoteCard
+              key={note._id}
+              note={note}
+              onEdit={setEditingNote}
+              onDelete={(n) => setPendingDelete({ id: n._id, title: n.title })}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* ----------------------------------------------------------- DIALOGS */}
+      {pendingDelete && (
         <ConfirmDialog
-          title="Delete Note"
-          message={`Are you sure you want to delete "${confirmDelete.title}"? This action cannot be undone.`}
-          confirmText="Delete"
-          cancelText="Keep It"
-          variant="danger"
-          onConfirm={() => handleDelete(confirmDelete.id)}
-          onCancel={() => setConfirmDelete(null)}
+          title="Delete this note?"
+          message={`“${pendingDelete.title || 'Untitled note'}” will be permanently removed. This cannot be undone.`}
+          confirmText="Delete note"
+          cancelText="Keep it"
+          onConfirm={() => handleDelete(pendingDelete.id)}
+          onCancel={() => setPendingDelete(null)}
         />
       )}
 
-      {/* Export Modal */}
-      <ExportModal
-        notes={safeNotes}
-        isOpen={showExportModal}
-        onClose={() => setShowExportModal(false)}
-      />
+      {showExport && <ExportModal notes={safeNotes} onClose={() => setShowExport(false)} />}
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+      )}
     </div>
   );
 }

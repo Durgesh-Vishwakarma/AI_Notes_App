@@ -1,0 +1,18 @@
+{
+  "name": "AI Notes — Write notes, get instant summaries",
+  "short_name": "AI Notes",
+  "description": "Write notes and generate bullet-point summaries of them, with tag filtering, search and export to PDF, Markdown or JSON.",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

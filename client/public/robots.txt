@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /$
+Allow: /features
+
+# Authenticated and auth-form routes hold no public content
+Disallow: /app
+Disallow: /login
+Disallow: /register
+
+Sitemap: https://ai-notes-app-pi.vercel.app/sitemap.xml
