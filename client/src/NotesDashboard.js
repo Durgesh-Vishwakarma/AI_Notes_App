@@ -3,7 +3,7 @@ import axios from 'axios';
 import { AuthContext } from './AuthContext';
 import NoteEditor from './NoteEditor';
 import ExportModal from './components/ExportModal';
-import { Button, Card, Badge, LoadingSpinner, Toast } from './components/UI';
+import { Button, Card, Badge, LoadingSpinner, Toast, EmptyState, ConfirmDialog } from './components/UI';
 
 // Set axios base URL for production
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -19,6 +19,7 @@ export default function NotesDashboard() {
   const [tag, setTag] = useState('');
   const [showExportModal, setShowExportModal] = useState(false);
   const [toast, setToast] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   useEffect(() => {
     fetchNotes();
@@ -49,7 +50,7 @@ export default function NotesDashboard() {
       setSearchResults(res.data);
       setError('');
       if (res.data.length === 0) {
-        window.alert('No matching notes found.');
+        setToast({ message: 'No matching notes found.', type: 'info' });
       }
     } catch {
       setError('Search failed');
@@ -58,13 +59,15 @@ export default function NotesDashboard() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this note?')) return;
     try {
       await axios.delete(`/notes/${id}`);
-      setNotes(notes.filter(n => n._id !== id));
+      setNotes(notes.filter((n) => n._id !== id));
+      setSearchResults(searchResults.filter((n) => n._id !== id));
+      setToast({ message: 'Note deleted successfully', type: 'success' });
     } catch {
       setError('Delete failed');
     }
+    setConfirmDelete(null);
   };
 
   const handleEdit = (note) => setEditingNote(note);
@@ -74,10 +77,12 @@ export default function NotesDashboard() {
     try {
       if (note._id) {
         const res = await axios.put(`/notes/${note._id}`, note);
-        setNotes(notes.map(n => n._id === note._id ? res.data : n));
+        setNotes(notes.map((n) => (n._id === note._id ? res.data : n)));
+        setToast({ message: 'Note updated successfully', type: 'success' });
       } else {
         const res = await axios.post('/notes', note);
         setNotes([res.data, ...notes]);
+        setToast({ message: 'Note created successfully', type: 'success' });
       }
       setEditingNote(null);
     } catch {
@@ -113,10 +118,10 @@ export default function NotesDashboard() {
 
   // Normalize notes to avoid undefined property access
   const safeNotes = Array.isArray(notes)
-    ? notes.map(n => ({
+    ? notes.map((n) => ({
         ...n,
         tags: Array.isArray(n?.tags) ? n.tags : [],
-        summary: Array.isArray(n?.summary) ? n.summary : []
+        summary: Array.isArray(n?.summary) ? n.summary : [],
       }))
     : [];
 
@@ -126,116 +131,302 @@ export default function NotesDashboard() {
     console.debug('NotesDashboard debug:', { count: safeNotes.length, allTags });
   }
 
-  if (loading) return <LoadingSpinner text="Loading notes..." />;
+  if (loading) return <LoadingSpinner text="Loading your notes..." />;
 
-  return (
-    <div className="max-w-5xl mx-auto mt-8 w-full px-2 sm:px-4 flex flex-col sm:flex-row gap-8">
-      {/* Left column: All notes */}
-      <div className="flex-1">
-        <div className="mb-4 flex gap-2">
-          <Button variant="success" onClick={handleNew}>New Note</Button>
-          <Button 
-            variant="secondary" 
-            onClick={() => setShowExportModal(true)}
-            disabled={safeNotes.length === 0}
+  const clearSearch = () => {
+    setSearchResults([]);
+    setSearch('');
+    setTag('');
+  };
+
+  // Render a single note card (reused for both main list and search results)
+  const renderNoteCard = (note, isSearchResult = false) => (
+    <div
+      key={note._id}
+      className={`glass-card note-card p-5 animate-fade-in`}
+      style={{
+        borderColor: isSearchResult ? 'rgba(99, 102, 241, 0.3)' : undefined,
+      }}
+    >
+      {/* Title */}
+      <h3
+        className="font-bold text-lg mb-2"
+        style={{ color: 'var(--text-primary)' }}
+      >
+        {note.title}
+      </h3>
+
+      {/* Content preview */}
+      <p
+        className="mb-3 text-sm leading-relaxed"
+        style={{ color: 'var(--text-secondary)' }}
+      >
+        {note.content && note.content.length > 200
+          ? note.content.substring(0, 200) + '...'
+          : note.content}
+      </p>
+
+      {/* Tags */}
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {(Array.isArray(note.tags) ? note.tags : [])
+          .filter((t) => typeof t === 'string' && t.trim())
+          .map((tag) => (
+            <Badge key={tag} variant="primary">
+              {tag}
+            </Badge>
+          ))}
+        {!Array.isArray(note.tags) && (
+          <span
+            className="text-xs"
+            style={{ color: 'var(--text-muted)' }}
+            title="Tags data missing"
           >
-            Export Notes ({safeNotes.length})
-          </Button>
-        </div>
-        <form className="mb-4 flex flex-col sm:flex-row gap-2" onSubmit={handleSearch}>
-          <input
-            type="text"
-            placeholder="Search notes..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="p-2 border rounded w-full sm:w-1/2"
-          />
-          <select
-            value={tag}
-            onChange={e => setTag(e.target.value)}
-            className="p-2 border rounded w-full sm:w-auto"
-          >
-            <option value="">All Tags</option>
-            {allTags.map(t => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-          <Button type="submit" variant="primary" size="md">Search</Button>
-        </form>
-        {editingNote && (
-          <NoteEditor note={editingNote} onSave={handleSave} onCancel={() => setEditingNote(null)} />
-        )}
-        {error && <div className="text-red-500 mb-2">{error}</div>}
-        <h2 className="text-xl font-bold mb-2">All Notes</h2>
-        {safeNotes.length === 0 ? (
-          <div>No notes yet.</div>
-        ) : (
-          safeNotes.map(note => (
-            <Card key={note._id} className="p-4 mb-4">
-              <div className="font-bold text-lg mb-2">{note.title}</div>
-              <div className="mb-3 text-gray-700">{note.content}</div>
-              <div className="mb-3 flex flex-wrap gap-1">
-                {(Array.isArray(note.tags) ? note.tags : []).filter(t => typeof t === 'string' && t.trim()).map(tag => (
-                  <Badge key={tag} variant="primary">{tag}</Badge>
-                ))}
-                {!Array.isArray(note.tags) && (
-                  <span className="text-xs text-gray-400" title="Tags data missing">No tags</span>
-                )}
-              </div>
-              <div className="mb-3">
-                <span className="font-semibold">AI Summary:</span>
-                <ul className="list-disc ml-6 mt-1">
-          {(Array.isArray(note.summary) ? note.summary : []).filter(s => typeof s === 'string' && s.trim()).map((s, i) => <li key={i}>{s}</li>)}
-                </ul>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="warning" size="sm" onClick={() => handleEdit(note)}>Edit</Button>
-                <Button variant="danger" size="sm" onClick={() => handleDelete(note._id)}>Delete</Button>
-              </div>
-            </Card>
-          ))
+            No tags
+          </span>
         )}
       </div>
-      {/* Right column: Search results */}
-      {searchResults.length > 0 && Array.isArray(searchResults) && (
-        <div className="flex-1 border-l border-gray-300 pl-8">
-          <h2 className="text-xl font-bold mb-2">Search Results</h2>
-          {searchResults.filter(Boolean).map(note => (
-            <Card key={note._id} className="p-4 mb-4 border-blue-200 bg-blue-50">
-              <div className="font-bold text-lg mb-2">{note.title}</div>
-              <div className="mb-3 text-gray-700">{note.content}</div>
-              <div className="mb-3 flex flex-wrap gap-1">
-                {(Array.isArray(note.tags) ? note.tags : []).filter(t => typeof t === 'string' && t.trim()).map(tag => (
-                  <Badge key={tag} variant="primary">{tag}</Badge>
-                ))}
-                {!Array.isArray(note.tags) && (
-                  <span className="text-xs text-gray-400" title="Tags data missing">No tags</span>
-                )}
-              </div>
-              <div className="mb-3">
-                <span className="font-semibold">AI Summary:</span>
-                <ul className="list-disc ml-6 mt-1">
-          {(Array.isArray(note.summary) ? note.summary : []).filter(s => typeof s === 'string' && s.trim()).map((s, i) => <li key={i}>{s}</li>)}
-                </ul>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="warning" size="sm" onClick={() => handleEdit(note)}>Edit</Button>
-                <Button variant="danger" size="sm" onClick={() => handleDelete(note._id)}>Delete</Button>
-              </div>
-            </Card>
-          ))}
+
+      {/* AI Summary */}
+      {Array.isArray(note.summary) && note.summary.filter(s => typeof s === 'string' && s.trim()).length > 0 && (
+        <div
+          className="mb-4 p-3 rounded-xl"
+          style={{
+            background: 'rgba(99, 102, 241, 0.08)',
+            border: '1px solid rgba(99, 102, 241, 0.15)',
+          }}
+        >
+          <div
+            className="text-xs font-semibold mb-2 flex items-center gap-1.5"
+            style={{ color: '#a5b4fc' }}
+          >
+            <span>✨</span> AI Insights
+          </div>
+          <ul className="space-y-1">
+            {note.summary
+              .filter((s) => typeof s === 'string' && s.trim())
+              .map((s, i) => (
+                <li
+                  key={i}
+                  className="text-xs flex items-start gap-2"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  <span style={{ color: 'var(--accent-purple)' }}>•</span>
+                  {s}
+                </li>
+              ))}
+          </ul>
         </div>
       )}
-      
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" onClick={() => handleEdit(note)}>
+          ✏️ Edit
+        </Button>
+        <Button
+          variant="danger"
+          size="sm"
+          onClick={() =>
+            setConfirmDelete({
+              id: note._id,
+              title: note.title,
+            })
+          }
+        >
+          🗑️ Delete
+        </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="max-w-5xl mx-auto mt-4 w-full px-2 sm:px-4 flex flex-col sm:flex-row gap-8">
+      {/* Left column: All notes */}
+      <div className="flex-1">
+        {/* Action Bar */}
+        <div className="mb-5 flex gap-3">
+          <Button variant="success" onClick={handleNew} icon="✏️">
+            New Note
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => setShowExportModal(true)}
+            disabled={safeNotes.length === 0}
+            icon="📤"
+          >
+            Export ({safeNotes.length})
+          </Button>
+        </div>
+
+        {/* Search Bar */}
+        <form
+          className="mb-6 flex flex-col sm:flex-row gap-3"
+          onSubmit={handleSearch}
+        >
+          <div className="relative flex-1">
+            <div
+              className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              placeholder="Search your notes..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="input-glass pl-11"
+            />
+          </div>
+
+          {/* Tag Filter as Pills */}
+          <div className="flex gap-2 items-center flex-wrap">
+            <button
+              type="button"
+              onClick={() => setTag('')}
+              className={`badge transition-all duration-200 cursor-pointer ${tag === '' ? 'badge-primary' : 'badge-default'}`}
+              style={{ padding: '6px 14px' }}
+            >
+              All
+            </button>
+            {allTags.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTag(t)}
+                className={`badge transition-all duration-200 cursor-pointer ${tag === t ? 'badge-primary' : 'badge-default'}`}
+                style={{ padding: '6px 14px' }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+
+          <Button type="submit" variant="primary" size="md">
+            Search
+          </Button>
+        </form>
+
+        {/* Note Editor */}
+        {editingNote && (
+          <div className="mb-6 animate-scale-in">
+            <NoteEditor
+              note={editingNote}
+              onSave={handleSave}
+              onCancel={() => setEditingNote(null)}
+            />
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div
+            className="mb-4 p-3 rounded-xl text-sm"
+            style={{
+              background: 'rgba(244, 63, 94, 0.1)',
+              border: '1px solid rgba(244, 63, 94, 0.25)',
+              color: '#fb7185',
+            }}
+          >
+            ⚠ {error}
+          </div>
+        )}
+
+        {/* Notes Heading */}
+        <div className="flex items-center justify-between mb-4">
+          <h2
+            className="text-xl font-bold gradient-text"
+          >
+            All Notes
+          </h2>
+          <span
+            className="text-sm"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            {safeNotes.length} note{safeNotes.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+
+        {/* Notes Grid */}
+        {safeNotes.length === 0 ? (
+          <EmptyState
+            icon="📝"
+            title="Your workspace is empty"
+            description="Create your first note and let AI do the heavy lifting. Get instant summaries, smart tags, and powerful search — all in one place."
+            action={
+              <Button variant="primary" size="lg" onClick={handleNew} icon="✨">
+                Create Your First Note
+              </Button>
+            }
+          />
+        ) : (
+          <div className="grid gap-4">
+            {safeNotes.map((note) => renderNoteCard(note))}
+          </div>
+        )}
+      </div>
+
+      {/* Right column: Search results */}
+      {searchResults.length > 0 && Array.isArray(searchResults) && (
+        <div
+          className="flex-1 animate-slide-up"
+          style={{
+            borderLeft: '1px solid rgba(168, 85, 247, 0.15)',
+            paddingLeft: '2rem',
+          }}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold gradient-text-secondary">
+              Search Results
+            </h2>
+            <Button variant="outline" size="sm" onClick={clearSearch}>
+              ✕ Clear
+            </Button>
+          </div>
+          <div className="grid gap-4">
+            {searchResults
+              .filter(Boolean)
+              .map((note) => renderNoteCard(note, true))}
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
       {toast && (
-        <Toast 
-          message={toast.message} 
-          type={toast.type} 
-          onClose={() => setToast(null)} 
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
         />
       )}
-      
-      <ExportModal 
+
+      {/* Confirm Delete Dialog */}
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Delete Note"
+          message={`Are you sure you want to delete "${confirmDelete.title}"? This action cannot be undone.`}
+          confirmText="Delete"
+          cancelText="Keep It"
+          variant="danger"
+          onConfirm={() => handleDelete(confirmDelete.id)}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {/* Export Modal */}
+      <ExportModal
         notes={safeNotes}
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}

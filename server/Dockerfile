@@ -7,8 +7,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install production dependencies without requiring a lockfile
+RUN npm install --omit=dev --no-audit --no-fund
 
 # Copy source code
 COPY . .

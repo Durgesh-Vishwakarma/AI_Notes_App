@@ -6,40 +6,144 @@ import Login from './Login';
 import Register from './Register';
 import NotesDashboard from './NotesDashboard';
 
+// Feature highlight cards for landing page
+const features = [
+  {
+    icon: '🧠',
+    title: 'AI-Powered Summaries',
+    description: 'Get instant, intelligent summaries of your notes powered by advanced AI',
+  },
+  {
+    icon: '🔍',
+    title: 'Smart Search',
+    description: 'Find any note in seconds with powerful full-text search and tag filtering',
+  },
+  {
+    icon: '📤',
+    title: 'Export Anywhere',
+    description: 'Download your notes as PDF, Markdown, or JSON — your data, your way',
+  },
+];
 
 function MainApp() {
   const [showRegister, setShowRegister] = useState(false);
   const { user, logout } = React.useContext(AuthContext);
 
   return (
-  <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 flex flex-col items-center justify-center">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
-          🤖 AI Notes App
-        </h1>
-        <p className="text-gray-600 text-center">Smart note-taking with AI-powered summaries</p>
+    <div className="min-h-screen relative">
+      {/* Animated Background */}
+      <div className="animated-bg" />
+
+      {/* Main Content */}
+      <div className="relative z-10 min-h-screen flex flex-col">
+        {/* Header */}
+        <header className="pt-10 pb-6 px-4 text-center">
+          <div className="animate-fade-in">
+            <h1 className="text-4xl sm:text-5xl font-extrabold mb-3 tracking-tight">
+              <span className="gradient-text">✨ AI Notes</span>
+            </h1>
+            {!user && (
+              <p
+                className="text-lg max-w-lg mx-auto leading-relaxed"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                Transform your thoughts into organized brilliance.
+                <br />
+                <span style={{ color: 'var(--text-secondary)' }}>
+                  Smart note-taking with AI-powered summaries.
+                </span>
+              </p>
+            )}
+          </div>
+        </header>
+
+        {/* Content Area */}
+        <main className="flex-1 flex flex-col items-center px-4 pb-8">
+          {!user ? (
+            <>
+              {/* Auth Forms */}
+              <div className="w-full max-w-md animate-slide-up">
+                {showRegister ? <Register /> : <Login />}
+                <div className="text-center mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowRegister((r) => !r)}
+                  >
+                    {showRegister
+                      ? 'Already have an account? Sign In'
+                      : 'New here? Create Account'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Feature Highlights */}
+              <div className="w-full max-w-4xl mt-16 grid grid-cols-1 sm:grid-cols-3 gap-6 px-4">
+                {features.map((feature, i) => (
+                  <div
+                    key={i}
+                    className="glass-card p-6 text-center"
+                    style={{ animationDelay: `${i * 150}ms` }}
+                  >
+                    <div className="text-4xl mb-4">{feature.icon}</div>
+                    <h3
+                      className="font-bold text-base mb-2"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      {feature.title}
+                    </h3>
+                    <p
+                      className="text-sm leading-relaxed"
+                      style={{ color: 'var(--text-muted)' }}
+                    >
+                      {feature.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            /* Dashboard */
+            <div className="w-full animate-fade-in">
+              {/* Welcome Bar */}
+              <div className="max-w-5xl mx-auto mb-6 px-2 sm:px-4">
+                <div className="glass-card p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg"
+                      style={{
+                        background: 'var(--gradient-primary)',
+                        color: 'white',
+                      }}
+                    >
+                      {user.name?.charAt(0)?.toUpperCase() || '?'}
+                    </div>
+                    <div>
+                      <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                        Welcome back
+                      </div>
+                      <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                        {user.name} 👋
+                      </div>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={logout}>
+                    Sign Out
+                  </Button>
+                </div>
+              </div>
+
+              <NotesDashboard />
+            </div>
+          )}
+        </main>
+
+        {/* Footer */}
+        <footer className="py-6 text-center">
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            © {new Date().getFullYear()} AI Notes — Intelligent note-taking for modern minds.
+          </p>
+        </footer>
       </div>
-      {!user ? (
-        <div className="w-full max-w-md">
-          {showRegister ? <Register /> : <Login />}
-          <div className="text-center mt-6">
-            <Button
-              variant="outline"
-              onClick={() => setShowRegister(r => !r)}
-            >
-              {showRegister ? 'Already have an account? Sign In' : 'New here? Create Account'}
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="w-full">
-          <div className="max-w-md mx-auto mb-6 text-center">
-            <div className="mb-4 text-lg">Welcome back, <span className="font-semibold text-blue-600">{user.name}</span>! 👋</div>
-            <Button variant="danger" onClick={logout}>Sign Out</Button>
-          </div>
-          <NotesDashboard />
-        </div>
-      )}
     </div>
   );
 }
