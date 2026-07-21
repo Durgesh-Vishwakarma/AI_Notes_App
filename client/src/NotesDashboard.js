@@ -125,11 +125,16 @@ export default function NotesDashboard() {
       setNotes(Array.isArray(res.data) ? res.data : []);
       setError('');
     } catch (err) {
-      setError(
-        !err.response
-          ? 'Could not reach the server. It may be starting up — try again shortly.'
-          : 'Could not load your notes. Please refresh to try again.'
-      );
+      // A 401 is handled globally by the axios interceptor, which drops the
+      // session and bounces to /login — showing an error here as well would
+      // flash a misleading message on the way out.
+      if (err.response?.status !== 401) {
+        setError(
+          !err.response
+            ? 'Could not reach the server. Free-tier hosting sleeps when idle, so the first request after a while can take up to a minute.'
+            : 'Could not load your notes. Please refresh to try again.'
+        );
+      }
     }
     setLoading(false);
   }, []);
@@ -313,7 +318,27 @@ export default function NotesDashboard() {
       {/* ------------------------------------------------------------- ERROR */}
       {error && (
         <div style={{ marginBottom: 20 }}>
-          <Alert type="error">{error}</Alert>
+          <Alert type="error">
+            <span>
+              {error}{' '}
+              <button
+                type="button"
+                onClick={fetchNotes}
+                style={{
+                  background: 'none',
+                  border: 0,
+                  padding: 0,
+                  color: 'inherit',
+                  font: 'inherit',
+                  fontWeight: 600,
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                }}
+              >
+                Try again
+              </button>
+            </span>
+          </Alert>
         </div>
       )}
 

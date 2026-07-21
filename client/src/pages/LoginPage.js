@@ -6,7 +6,7 @@ import Seo from '../components/Seo';
 import { Button, Input, Card, Alert, Icon } from '../components/UI';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, sessionExpired } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -57,6 +57,12 @@ export default function LoginPage() {
         <p style={{ fontSize: '0.9375rem', color: 'var(--text-muted)', marginBottom: 28 }}>
           Welcome back. Your notes are where you left them.
         </p>
+
+        {sessionExpired && !error && (
+          <div style={{ marginBottom: 20 }}>
+            <Alert type="info">Your session expired. Please sign in again.</Alert>
+          </div>
+        )}
 
         {error && (
           <div style={{ marginBottom: 20 }}>

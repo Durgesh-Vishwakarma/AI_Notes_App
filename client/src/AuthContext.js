@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useMemo, useCallback } from 'react';
-import { setAuthToken } from './api';
+import { setAuthToken, setUnauthorizedHandler } from './api';
 
 export const AuthContext = createContext(null);
 
@@ -32,6 +32,10 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(readStoredUser);
   const [token, setToken] = useState(readStoredToken);
 
+  // Set when a session is dropped involuntarily, so the login page can explain
+  // why the user landed there instead of just showing an empty form.
+  const [sessionExpired, setSessionExpired] = useState(false);
+
   useEffect(() => {
     setAuthToken(token);
   }, [token]);
@@ -39,6 +43,7 @@ export const AuthProvider = ({ children }) => {
   const login = useCallback((userData, jwt) => {
     setUser(userData);
     setToken(jwt);
+    setSessionExpired(false);
     try {
       localStorage.setItem(USER_KEY, JSON.stringify(userData));
     } catch {
@@ -57,6 +62,25 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  // Any 401 from an authenticated endpoint means the token is expired or
+  // invalid, so drop the session rather than leaving a signed-in shell whose
+  // every request fails.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setUser(null);
+      setToken(null);
+      setAuthToken(null);
+      setSessionExpired(true);
+      try {
+        localStorage.removeItem(USER_KEY);
+      } catch {
+        /* non-fatal */
+      }
+    });
+
+    return () => setUnauthorizedHandler(null);
+  }, []);
+
   // Keep tabs consistent: signing out in one tab signs out the others rather
   // than leaving them holding a token that no longer exists.
   useEffect(() => {
@@ -71,8 +95,15 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const value = useMemo(
-    () => ({ user, token, login, logout, isAuthenticated: Boolean(token) }),
-    [user, token, login, logout]
+    () => ({
+      user,
+      token,
+      login,
+      logout,
+      sessionExpired,
+      isAuthenticated: Boolean(token),
+    }),
+    [user, token, login, logout, sessionExpired]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
