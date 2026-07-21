@@ -36,11 +36,14 @@ export const AuthProvider = ({ children }) => {
   // why the user landed there instead of just showing an empty form.
   const [sessionExpired, setSessionExpired] = useState(false);
 
-  useEffect(() => {
-    setAuthToken(token);
-  }, [token]);
+  // Note: the token is never applied to axios from an effect here. Effects
+  // flush child-first, so a child's mount effect could fire an authenticated
+  // request before this component's effect had attached the header. Instead,
+  // api.js seeds itself from localStorage at module load, and every transition
+  // below calls setAuthToken synchronously.
 
   const login = useCallback((userData, jwt) => {
+    setAuthToken(jwt);
     setUser(userData);
     setToken(jwt);
     setSessionExpired(false);
@@ -86,6 +89,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const onStorage = (e) => {
       if (e.key === TOKEN_KEY && !e.newValue) {
+        setAuthToken(null);
         setUser(null);
         setToken(null);
       }
